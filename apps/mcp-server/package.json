@@ -1,6 +1,6 @@
 {
   "name": "photoresist-layer-mcp",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "MCP Server for Photoresist Layer — AI reads visual feedback from any website",
   "author": "Cosmos AI Lab",
   "license": "MIT",
