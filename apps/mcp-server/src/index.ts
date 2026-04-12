@@ -43,11 +43,13 @@ server.tool(
     const snap = await getDocs(q);
     const items = snap.docs.map((d) => {
       const data = d.data();
+      const libItems = data.library_items || [];
       return {
         id: d.id,
         page: (data.page_title || '').slice(0, 50),
         status: data.status || 'open',
         annotations: data.annotations?.length || 0,
+        files: libItems.map((f: any) => f.name),
         intent: data.intent_summary || '',
         time: data.created_at || '',
       };
@@ -98,6 +100,7 @@ server.tool(
       annotations: data.annotations,
       dom_contexts: data.dom_contexts,
       intent_summary: data.intent_summary,
+      library_items: data.library_items || [],
     };
     return text(JSON.stringify(graph, null, 2));
   }

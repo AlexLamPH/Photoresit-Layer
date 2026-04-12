@@ -1053,10 +1053,14 @@ function updateMiniLibrary(items: LibraryItem[]): void {
     el.className = 'w-mini-item';
     el.dataset.id = item.id;
     if (item.type === 'screenshot') {
-      el.innerHTML = `<img src="${item.data_ref}" class="w-mini-thumb" title="${item.name}" />`;
+      el.innerHTML = `
+        <input type="checkbox" class="w-mini-check" data-id="${item.id}" checked />
+        <img src="${item.data_ref}" class="w-mini-thumb" title="${item.name}" />`;
     } else {
       const icon = getItemIcon(item);
-      el.innerHTML = `<span class="w-mini-icon" title="${item.name}">${icon}</span>`;
+      el.innerHTML = `
+        <input type="checkbox" class="w-mini-check" data-id="${item.id}" checked />
+        <span class="w-mini-icon" title="${item.name}">${icon}</span>`;
     }
     list.appendChild(el);
   });
@@ -1181,17 +1185,26 @@ async function handleExport(format: string): Promise<void> {
   }
 }
 
-async function getSelectedLibraryScreenshots(): Promise<Screenshot[]> {
-  // Get selected items that are screenshots
-  const selectedIds: string[] = [];
-  shadowRoot?.querySelectorAll('.w-item-check').forEach((cb) => {
-    if ((cb as HTMLInputElement).checked) selectedIds.push((cb as HTMLInputElement).dataset.id!);
+// Get selected IDs from both mini library (widget) and full library overlay
+function getAllSelectedIds(): string[] {
+  const ids = new Set<string>();
+  // Mini library checkboxes (in widget)
+  shadowRoot?.querySelectorAll('.w-mini-check').forEach((cb) => {
+    if ((cb as HTMLInputElement).checked) ids.add((cb as HTMLInputElement).dataset.id!);
   });
+  // Full library overlay checkboxes
+  shadowRoot?.querySelectorAll('.w-item-check').forEach((cb) => {
+    if ((cb as HTMLInputElement).checked) ids.add((cb as HTMLInputElement).dataset.id!);
+  });
+  return [...ids];
+}
+
+async function getSelectedLibraryScreenshots(): Promise<Screenshot[]> {
+  const selectedIds = getAllSelectedIds();
   const allItems = await getLibraryItems();
   const ssItems = selectedIds.length > 0
     ? allItems.filter((i) => selectedIds.includes(i.id) && i.type === 'screenshot')
     : allItems.filter((i) => i.type === 'screenshot');
-  // Convert to Screenshot format for bundle
   return ssItems.map((i) => ({
     id: i.id,
     data_ref: i.data_ref,
@@ -1203,37 +1216,51 @@ async function getSelectedLibraryScreenshots(): Promise<Screenshot[]> {
 
 async function handleSend(): Promise<void> {
   const anns = getAnnotations();
-  const selectedSS = await getSelectedLibraryScreenshots();
+  const selectedIds = getAllSelectedIds();
+  const allItems = await getLibraryItems();
 
-  // Get all selected item IDs
-  const selectedIds: string[] = [];
-  shadowRoot?.querySelectorAll('.w-item-check').forEach((cb) => {
-    if ((cb as HTMLInputElement).checked) selectedIds.push((cb as HTMLInputElement).dataset.id!);
-  });
+  // Get selected items (screenshots for bundle, all for metadata)
+  const selectedItems = selectedIds.length > 0
+    ? allItems.filter((i) => selectedIds.includes(i.id))
+    : allItems;
+  const ssItems = selectedItems.filter((i) => i.type === 'screenshot');
+  const selectedSS: Screenshot[] = ssItems.map((i) => ({
+    id: i.id,
+    data_ref: i.data_ref,
+    crop: { x: 0, y: 0, width: 0, height: 0 },
+    viewport_width: window.innerWidth,
+    viewport_height: window.innerHeight,
+  }));
 
-  if (anns.length === 0 && selectedSS.length === 0 && selectedIds.length === 0) {
+  if (anns.length === 0 && selectedItems.length === 0) {
     showToast('Nothing to send — select items first');
     return;
   }
   showToast('Sending...');
   try {
     const bundle = await createBundle(anns, selectedSS);
+
+    // Attach file names to bundle so Firebase stores them
+    (bundle as any).library_items = selectedItems.map((i) => ({
+      id: i.id,
+      type: i.type,
+      name: i.name,
+      project: i.project,
+      tags: i.tags,
+      page_url: i.page_url,
+      page_title: i.page_title,
+      created_at: i.created_at,
+    }));
+
     console.log('[Photoresist] Markdown:\n' + bundle.markdown_summary);
     const r = await uploadBundle(bundle);
 
-    // Delete sent library items
-    if (selectedIds.length > 0) {
-      await deleteLibraryItems(selectedIds);
-    } else {
-      // If no specific selection, delete all screenshots
-      const allItems = await getLibraryItems();
-      const ssIds = allItems.filter((i) => i.type === 'screenshot').map((i) => i.id);
-      if (ssIds.length > 0) await deleteLibraryItems(ssIds);
-    }
+    // Delete sent items
+    const idsToDelete = selectedItems.map((i) => i.id);
+    if (idsToDelete.length > 0) await deleteLibraryItems(idsToDelete);
 
-    const totalSent = anns.length + selectedIds.length;
     if (r.success) {
-      showToast(`Sent! ${totalSent} items`);
+      showToast(`Sent! ${selectedItems.length} items`);
     } else {
       showToast(`Saved locally. Cloud will sync later.`);
     }
@@ -1572,9 +1599,10 @@ function getCSS(): string {
 .w-mini-lib-list { display:flex; gap:4px; flex-wrap:wrap; }
 .w-mini-lib-list:empty { display:none; }
 .w-mini-lib-list:empty + .w-mini-lib { display:none; }
-.w-mini-item { position:relative; width:42px; height:32px; border-radius:4px; overflow:hidden; border:1px solid rgba(255,255,255,0.08); cursor:pointer; transition:all 0.12s; flex-shrink:0; }
+.w-mini-item { position:relative; width:42px; height:32px; border-radius:4px; overflow:visible; border:1px solid rgba(255,255,255,0.08); cursor:pointer; transition:all 0.12s; flex-shrink:0; }
 .w-mini-item:hover { border-color:rgba(167,139,250,0.5); }
-.w-mini-thumb { width:100%; height:100%; object-fit:cover; pointer-events:none; }
+.w-mini-check { position:absolute; top:-5px; left:-5px; width:12px; height:12px; cursor:pointer; accent-color:#a78bfa; z-index:2; }
+.w-mini-thumb { width:100%; height:100%; object-fit:cover; pointer-events:none; border-radius:3px; }
 .w-mini-icon { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:16px; background:rgba(255,255,255,0.03); pointer-events:none; }
 
 /* SDK panel */
