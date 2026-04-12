@@ -513,10 +513,15 @@ function setupWidgetEvents(w: HTMLElement): void {
       return;
     }
 
-    // Mini library item click → preview
-    const miniItem = el.closest('.w-mini-item') as HTMLElement | null;
-    if (miniItem) {
-      viewLibraryItem(miniItem.dataset.id!);
+    // Mini library — checkbox click = select only, NOT preview
+    if (el.closest('.w-mini-check')) {
+      return; // let checkbox toggle naturally, no preview
+    }
+    // Mini library — click thumbnail/icon = preview
+    const miniThumb = el.closest('.w-mini-thumb, .w-mini-icon') as HTMLElement | null;
+    if (miniThumb) {
+      const miniItem = miniThumb.closest('.w-mini-item') as HTMLElement;
+      if (miniItem) viewLibraryItem(miniItem.dataset.id!);
       return;
     }
 
@@ -1054,12 +1059,12 @@ function updateMiniLibrary(items: LibraryItem[]): void {
     el.dataset.id = item.id;
     if (item.type === 'screenshot') {
       el.innerHTML = `
-        <input type="checkbox" class="w-mini-check" data-id="${item.id}" checked />
+        <input type="checkbox" class="w-mini-check" data-id="${item.id}" />
         <img src="${item.data_ref}" class="w-mini-thumb" title="${item.name}" />`;
     } else {
       const icon = getItemIcon(item);
       el.innerHTML = `
-        <input type="checkbox" class="w-mini-check" data-id="${item.id}" checked />
+        <input type="checkbox" class="w-mini-check" data-id="${item.id}" />
         <span class="w-mini-icon" title="${item.name}">${icon}</span>`;
     }
     list.appendChild(el);
