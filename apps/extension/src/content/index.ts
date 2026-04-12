@@ -517,6 +517,12 @@ function setupWidgetEvents(w: HTMLElement): void {
     if (el.closest('.w-mini-check')) {
       return; // let checkbox toggle naturally, no preview
     }
+    // Mini library — delete button
+    const miniDel = el.closest('.w-mini-del') as HTMLElement | null;
+    if (miniDel) {
+      deleteLibraryItem(miniDel.dataset.id!).then(() => { updateAll(); updateLibrary(); });
+      return;
+    }
     // Mini library — click thumbnail/icon = preview
     const miniThumb = el.closest('.w-mini-thumb, .w-mini-icon') as HTMLElement | null;
     if (miniThumb) {
@@ -1025,7 +1031,7 @@ async function updateAll(): Promise<void> {
   if (!shadowRoot) return;
   const w = shadowRoot.querySelector('#pr-widget') as HTMLElement;
   const items = await getLibraryItems();
-  const n = getAnnotations().length + items.length;
+  const n = items.length;
 
   // Badges
   w?.querySelectorAll('.w-badge, .w-badge-foot').forEach((b) => {
@@ -1060,12 +1066,14 @@ function updateMiniLibrary(items: LibraryItem[]): void {
     if (item.type === 'screenshot') {
       el.innerHTML = `
         <input type="checkbox" class="w-mini-check" data-id="${item.id}" />
-        <img src="${item.data_ref}" class="w-mini-thumb" title="${item.name}" />`;
+        <img src="${item.data_ref}" class="w-mini-thumb" title="${item.name}" />
+        <button class="w-mini-del" data-id="${item.id}">&times;</button>`;
     } else {
       const icon = getItemIcon(item);
       el.innerHTML = `
         <input type="checkbox" class="w-mini-check" data-id="${item.id}" />
-        <span class="w-mini-icon" title="${item.name}">${icon}</span>`;
+        <span class="w-mini-icon" title="${item.name}">${icon}</span>
+        <button class="w-mini-del" data-id="${item.id}">&times;</button>`;
     }
     list.appendChild(el);
   });
@@ -1224,7 +1232,7 @@ async function handleSend(): Promise<void> {
   const selectedIds = getAllSelectedIds();
   const allItems = await getLibraryItems();
 
-  // Get selected items (screenshots for bundle, all for metadata)
+  // Get selected items
   const selectedItems = selectedIds.length > 0
     ? allItems.filter((i) => selectedIds.includes(i.id))
     : allItems;
@@ -1245,7 +1253,7 @@ async function handleSend(): Promise<void> {
   try {
     const bundle = await createBundle(anns, selectedSS);
 
-    // Attach file names to bundle so Firebase stores them
+    // Attach file metadata (NO data_ref — keep document small for Firestore 1MB limit)
     (bundle as any).library_items = selectedItems.map((i) => ({
       id: i.id,
       type: i.type,
@@ -1257,21 +1265,22 @@ async function handleSend(): Promise<void> {
       created_at: i.created_at,
     }));
 
-    console.log('[Photoresist] Markdown:\n' + bundle.markdown_summary);
     const r = await uploadBundle(bundle);
 
-    // Delete sent items
-    const idsToDelete = selectedItems.map((i) => i.id);
-    if (idsToDelete.length > 0) await deleteLibraryItems(idsToDelete);
-
     if (r.success) {
+      // Only delete after successful send
+      const idsToDelete = selectedItems.map((i) => i.id);
+      if (idsToDelete.length > 0) await deleteLibraryItems(idsToDelete);
       showToast(`Sent! ${selectedItems.length} items`);
     } else {
-      showToast(`Saved locally. Cloud will sync later.`);
+      showToast(`Send failed: ${r.error || 'unknown error'}`);
     }
     updateAll();
     updateLibrary();
-  } catch (err) { console.error('[Photoresist]', err); showToast('Saved locally.'); }
+  } catch (err) {
+    console.error('[Photoresist] Send error:', err);
+    showToast('Send failed: ' + (err instanceof Error ? err.message : String(err)));
+  }
 }
 
 function showToast(msg: string): void {
@@ -1607,6 +1616,8 @@ function getCSS(): string {
 .w-mini-item { position:relative; width:42px; height:32px; border-radius:4px; overflow:visible; border:1px solid rgba(255,255,255,0.08); cursor:pointer; transition:all 0.12s; flex-shrink:0; }
 .w-mini-item:hover { border-color:rgba(167,139,250,0.5); }
 .w-mini-check { position:absolute; top:-5px; left:-5px; width:12px; height:12px; cursor:pointer; accent-color:#a78bfa; z-index:2; }
+.w-mini-del { position:absolute; top:-5px; right:-5px; width:14px; height:14px; border:none; border-radius:7px; background:rgba(239,68,68,0.85); color:#fff; font-size:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; opacity:0; transition:opacity 0.12s; z-index:2; line-height:1; }
+.w-mini-item:hover .w-mini-del { opacity:1; }
 .w-mini-thumb { width:100%; height:100%; object-fit:cover; pointer-events:none; border-radius:3px; }
 .w-mini-icon { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:16px; background:rgba(255,255,255,0.03); pointer-events:none; }
 
