@@ -285,11 +285,11 @@ function createWidget(): HTMLElement {
         <div class="w-sdk-content">
           <p class="w-sdk-desc">Connect any AI coding tool to Photoresist Layer. AI will read your feedback directly — no terminal needed.</p>
           <div class="w-sdk-step">Claude Code / Cursor / Codex</div>
-          <div class="w-sdk-code" data-copy='{"mcpServers":{"photoresist-layer":{"command":"npx","args":["tsx","apps/mcp-server/src/index.ts"],"cwd":"/path/to/photoresist-layer"}}}'>{
+          <div class="w-sdk-code" data-copy='{"mcpServers":{"photoresist-layer":{"command":"npx","args":["photoresist-layer-mcp"]}}}'>{
   "mcpServers": {
     "photoresist-layer": {
       "command": "npx",
-      "args": ["tsx", "apps/mcp-server/src/index.ts"]
+      "args": ["photoresist-layer-mcp"]
     }
   }
 }</div>
@@ -302,10 +302,9 @@ function createWidget(): HTMLElement {
             <div class="w-mcp-tool">✅ <b>update_status</b> — Đổi trạng thái</div>
             <div class="w-mcp-tool">⚡ <b>get_sdk</b> — Code tích hợp SDK</div>
           </div>
-          <div class="w-sdk-step">Firebase Project</div>
-          <div class="w-sdk-code" data-copy="Project: photoresit | Collection: photoresist_bundles">Project: photoresit
-Collection: photoresist_bundles</div>
-          <p class="w-sdk-note">Click code blocks to copy. AI connects once → reads all feedback automatically.</p>
+          <div class="w-sdk-step">npm package</div>
+          <div class="w-sdk-code" data-copy="npx photoresist-layer-mcp">npx photoresist-layer-mcp</div>
+          <p class="w-sdk-note">Click code block to copy. Paste into AI tool's MCP config → done! No setup needed.</p>
         </div>
       </div>
       <div class="w-mini-lib">

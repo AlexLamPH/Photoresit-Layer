@@ -14,12 +14,10 @@ import {
 } from 'firebase/firestore';
 
 // --- Firebase ---
-// Load from .env (not committed to repo)
-import 'dotenv/config';
-
+// Web API key (public by design — security is handled by Firebase Security Rules)
 const app = initializeApp({
-  apiKey: process.env.FIREBASE_API_KEY!,
-  projectId: process.env.FIREBASE_PROJECT_ID!,
+  apiKey: process.env.FIREBASE_API_KEY || 'AIzaSyD_wpi0C6RHLaDKJTH2_GNjFANk8QmhNyc',
+  projectId: process.env.FIREBASE_PROJECT_ID || 'photoresit',
 });
 const db = getFirestore(app);
 

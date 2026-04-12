@@ -1,19 +1,36 @@
 {
-  "name": "@photoresist/mcp-server",
+  "name": "photoresist-layer-mcp",
   "version": "0.1.0",
-  "private": true,
+  "description": "MCP Server for Photoresist Layer — AI reads visual feedback from any website",
+  "author": "Cosmos AI Lab",
+  "license": "MIT",
   "type": "module",
   "bin": {
-    "photoresist-mcp": "dist/index.js"
+    "photoresist-layer-mcp": "dist/index.js"
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
-    "build": "tsc"
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "photoresist",
+    "feedback",
+    "chrome-extension",
+    "ai-tools",
+    "visual-feedback"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AlexLamPH/Photoresit-Layer"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
-    "dotenv": "^17.4.1",
     "firebase": "^12.12.0",
     "zod": "^4.3.6"
   },
