@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "photoresist-layer": {
+      "command": "npx",
+      "args": ["tsx", "apps/mcp-server/src/index.ts"],
+      "cwd": "."
+    }
+  }
+}

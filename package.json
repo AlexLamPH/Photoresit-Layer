@@ -1,0 +1,19 @@
+{
+  "name": "photoresist-layer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Visual feedback tool for AI coding workflows \u2014 Cosmos AI Lab",
+  "author": "Cosmos AI Lab",
+  "license": "MIT",
+  "scripts": {
+    "dev": "pnpm --filter extension dev",
+    "build": "pnpm --filter extension build",
+    "build:all": "pnpm -r build",
+    "clean": "pnpm -r clean"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}
