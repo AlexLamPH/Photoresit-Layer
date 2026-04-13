@@ -338,7 +338,7 @@ function createBox(x1: number, y1: number, x2: number, y2: number): void {
     priority: 'medium',
     locked: false,
     z_index: annotations.length + 1,
-    payload: { color: drawColor, border_width: drawWidth, fill_opacity: 0.08 },
+    payload: { color: drawColor, border_width: drawWidth, fill_opacity: 0 },
   };
 
   addAnnotation(ann);
@@ -390,7 +390,7 @@ function createShape(shape: 'circle' | 'ellipse' | 'star', x1: number, y1: numbe
     dom_context: captureDOMContext(left + w / 2, top + h / 2),
     intent: 'highlight' as AnnotationIntent,
     label: '', priority: 'medium', locked: false, z_index: annotations.length + 1,
-    payload: { color: drawColor, border_width: drawWidth, fill_opacity: 0.08, ...(shape === 'star' ? { points_count: 5 } : {}) },
+    payload: { color: drawColor, border_width: drawWidth, fill_opacity: 0, ...(shape === 'star' ? { points_count: 5 } : {}) },
   };
   addAnnotation(ann); selectedId = ann.id;
 }
