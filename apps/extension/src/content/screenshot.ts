@@ -184,7 +184,7 @@ async function cropImage(dataUrl: string, x: number, y: number, width: number, h
   const ctx = canvas.getContext('2d')!;
   ctx.drawImage(img, sx, sy, sw, sh, 0, 0, outW, outH);
 
-  const blob = await canvas.convertToBlob({ type: 'image/png', quality: SCREENSHOT_QUALITY });
+  const blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: SCREENSHOT_QUALITY });
   return new Promise((resolve) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);

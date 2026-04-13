@@ -310,7 +310,7 @@ export function generateId(): string {
 // --- Constants ---
 
 export const BUNDLE_SIZE_LIMIT_MB = 25;
-export const SCREENSHOT_MAX_WIDTH = 1920;
-export const SCREENSHOT_QUALITY = 0.8;
+export const SCREENSHOT_MAX_WIDTH = 1280;
+export const SCREENSHOT_QUALITY = 0.7;
 export const MAX_ANNOTATIONS_PER_BUNDLE = 20;
 export const SCHEMA_VERSION = '3.0' as const;

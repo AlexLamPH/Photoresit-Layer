@@ -285,11 +285,15 @@ function createWidget(): HTMLElement {
         <div class="w-sdk-content">
           <p class="w-sdk-desc">Connect any AI coding tool to Photoresist Layer. AI will read your feedback directly — no terminal needed.</p>
           <div class="w-sdk-step">Claude Code / Cursor / Codex</div>
-          <div class="w-sdk-code" data-copy='{"mcpServers":{"photoresist-layer":{"command":"npx","args":["photoresist-layer-mcp"]}}}'>{
+          <div class="w-sdk-code" data-copy='{"mcpServers":{"photoresist-layer":{"command":"npx","args":["photoresist-layer-mcp"],"env":{"FIREBASE_API_KEY":"YOUR_KEY","FIREBASE_PROJECT_ID":"YOUR_PROJECT"}}}}'>{
   "mcpServers": {
     "photoresist-layer": {
       "command": "npx",
-      "args": ["photoresist-layer-mcp"]
+      "args": ["photoresist-layer-mcp"],
+      "env": {
+        "FIREBASE_API_KEY": "...",
+        "FIREBASE_PROJECT_ID": "..."
+      }
     }
   }
 }</div>
@@ -523,11 +527,10 @@ function setupWidgetEvents(w: HTMLElement): void {
       deleteLibraryItem(miniDel.dataset.id!).then(() => { updateAll(); updateLibrary(); });
       return;
     }
-    // Mini library — click thumbnail/icon = preview
-    const miniThumb = el.closest('.w-mini-thumb, .w-mini-icon') as HTMLElement | null;
-    if (miniThumb) {
-      const miniItem = miniThumb.closest('.w-mini-item') as HTMLElement;
-      if (miniItem) viewLibraryItem(miniItem.dataset.id!);
+    // Mini library — click item = preview (thumbnail has pointer-events:none, so click lands on .w-mini-item)
+    const miniItem = el.closest('.w-mini-item') as HTMLElement | null;
+    if (miniItem && miniItem.dataset.id) {
+      viewLibraryItem(miniItem.dataset.id);
       return;
     }
 

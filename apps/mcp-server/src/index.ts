@@ -14,11 +14,16 @@ import {
 } from 'firebase/firestore';
 
 // --- Firebase ---
-// Web API key (public by design — security is handled by Firebase Security Rules)
-const app = initializeApp({
-  apiKey: process.env.FIREBASE_API_KEY || 'AIzaSyD_wpi0C6RHLaDKJTH2_GNjFANk8QmhNyc',
-  projectId: process.env.FIREBASE_PROJECT_ID || 'photoresit',
-});
+// Requires FIREBASE_API_KEY and FIREBASE_PROJECT_ID env vars
+// Pass them via MCP config: "env": { "FIREBASE_API_KEY": "...", "FIREBASE_PROJECT_ID": "..." }
+const apiKey = process.env.FIREBASE_API_KEY;
+const projectId = process.env.FIREBASE_PROJECT_ID;
+if (!apiKey || !projectId) {
+  console.error('Missing FIREBASE_API_KEY or FIREBASE_PROJECT_ID environment variables.');
+  console.error('Add them to your MCP config: "env": { "FIREBASE_API_KEY": "...", "FIREBASE_PROJECT_ID": "..." }');
+  process.exit(1);
+}
+const app = initializeApp({ apiKey, projectId });
 const db = getFirestore(app);
 
 // --- MCP Server ---

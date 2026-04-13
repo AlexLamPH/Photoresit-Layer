@@ -812,6 +812,15 @@ function renderAnnotation(ann: Annotation): HTMLElement {
         window.addEventListener('mousemove', nmv, true);
         window.addEventListener('mouseup', nup, true);
       });
+      // Double-click = copy note text to clipboard
+      el.addEventListener('dblclick', (e: Event) => {
+        e.stopPropagation();
+        const text = (ann.payload as { text: string }).text || '';
+        navigator.clipboard.writeText(text).then(() => {
+          el.style.outline = '2px solid #4ade80';
+          setTimeout(() => { el.style.outline = isSelected ? '2px solid #a78bfa' : ''; }, 800);
+        });
+      });
       break;
     }
 

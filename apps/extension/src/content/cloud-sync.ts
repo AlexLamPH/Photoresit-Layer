@@ -159,8 +159,8 @@ async function uploadScreenshots(screenshots: Screenshot[], feedbackId: string):
       console.log(`[Photoresist] Screenshot uploaded: ${ss.id}`);
     } catch (err) {
       console.error(`[Photoresist] Screenshot upload failed: ${ss.id}`, err);
-      // Keep original data_ref if upload fails
-      results.push(ss);
+      // Don't keep base64 — too large for Firestore (1MB limit)
+      results.push({ ...ss, data_ref: `[upload_failed:${ss.id}]` });
     }
   }
 
