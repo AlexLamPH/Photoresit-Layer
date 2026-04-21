@@ -97,11 +97,14 @@ function init(): void {
       const t = e.target as HTMLElement;
       if (t.tagName === 'TEXTAREA' || t.tagName === 'INPUT') return;
       e.preventDefault();
-      // ESC = deselect tool + stop inspect
+      // ESC = deselect tool + stop inspect + release pointer events
       setTool('select');
       if (isInspectActive) { stopInspect(); isInspectActive = false; }
       updateToolHighlight('');
       updateDrawOpts();
+      // Release annotation layer so website becomes clickable again
+      const annLayer = shadowRoot?.querySelector('#pr-ann-layer') as HTMLElement;
+      if (annLayer) annLayer.style.pointerEvents = 'none';
     }
   }, true);
 }
