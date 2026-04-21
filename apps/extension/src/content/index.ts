@@ -620,9 +620,12 @@ function activateTool(tool: string): void {
   const cur = getCurrentTool();
   if (cur === tool) { setTool('select'); updateToolHighlight(''); }
   else { setTool(tool as AnnotationTool); updateToolHighlight(tool); }
-  // Enable annotation layer
+  // Only capture pointer events when a tool is active (not select mode)
+  // This lets users click through to the website when no tool is selected
   const annLayer = shadowRoot?.querySelector('#pr-ann-layer') as HTMLElement;
-  if (annLayer) annLayer.style.pointerEvents = 'auto';
+  if (annLayer) {
+    annLayer.style.pointerEvents = getCurrentTool() === 'select' ? 'none' : 'auto';
+  }
   updateDrawOpts();
 }
 
@@ -1045,9 +1048,13 @@ async function updateAll(): Promise<void> {
   // Mini library preview in widget
   updateMiniLibrary(items);
 
-  // Annotation layer pointer
+  // Annotation layer pointer — only capture when tool active AND extension open
+  // This lets user click-through to website when no tool is selected
   const annLayer = shadowRoot.querySelector('#pr-ann-layer') as HTMLElement;
-  if (annLayer) annLayer.style.pointerEvents = isOpen ? 'auto' : 'none';
+  if (annLayer) {
+    const toolActive = isOpen && getCurrentTool() !== 'select';
+    annLayer.style.pointerEvents = toolActive ? 'auto' : 'none';
+  }
 
   // Widget pointer
   if (w) w.style.pointerEvents = 'auto';
