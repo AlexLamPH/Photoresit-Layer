@@ -111,6 +111,17 @@ export function getSelectedAnnotation(): Annotation | null {
   return annotations.find((a) => a.id === selectedId) ?? null;
 }
 
+// --- Clear all annotations ---
+export function clearAnnotations(): void {
+  annotations.length = 0;
+  selectedId = null;
+  pathPoints = [];
+  clearPathPreview();
+  if (activeNoteInput) closeNoteInput();
+  renderAll();
+  onChangeCallback?.();
+}
+
 // --- Mouse Handlers ---
 function onMouseDown(e: MouseEvent): void {
   // Ignore clicks on note input popups or annotation elements
@@ -728,6 +739,96 @@ function addDeleteButton(el: HTMLElement, annId: string): void {
   el.appendChild(btn);
 }
 
+// Make an element draggable — updates ann.x/ann.y on drag
+function makeDraggable(el: HTMLElement, ann: Annotation): void {
+  let dragging = false, startMouseX = 0, startMouseY = 0, startAnnX = 0, startAnnY = 0;
+  el.addEventListener('mousedown', (e: MouseEvent) => {
+    // Don't start drag on delete button
+    if ((e.target as HTMLElement).closest('.pr-ann-delete')) return;
+    dragging = true;
+    startMouseX = e.clientX;
+    startMouseY = e.clientY;
+    startAnnX = ann.x;
+    startAnnY = ann.y;
+    selectedId = ann.id;
+    e.preventDefault();
+    e.stopPropagation();
+    const mv = (e2: MouseEvent) => {
+      if (!dragging) return;
+      const dx = e2.clientX - startMouseX;
+      const dy = e2.clientY - startMouseY;
+      updateAnnotation(ann.id, { x: startAnnX + dx, y: startAnnY + dy });
+    };
+    const up = () => { dragging = false; window.removeEventListener('mousemove', mv, true); window.removeEventListener('mouseup', up, true); };
+    window.addEventListener('mousemove', mv, true);
+    window.addEventListener('mouseup', up, true);
+  });
+}
+
+// Make line/arrow/curve draggable — updates start_x/y and end_x/y by delta
+function makeLineDraggable(el: HTMLElement, ann: Annotation): void {
+  let dragging = false, startMouseX = 0, startMouseY = 0;
+  let startSX = 0, startSY = 0, startEX = 0, startEY = 0, startCX = 0, startCY = 0;
+  el.addEventListener('mousedown', (e: MouseEvent) => {
+    if ((e.target as HTMLElement).closest('.pr-ann-delete')) return;
+    dragging = true;
+    startMouseX = e.clientX;
+    startMouseY = e.clientY;
+    const p = ann.payload as any;
+    startSX = p.start_x; startSY = p.start_y;
+    startEX = p.end_x; startEY = p.end_y;
+    startCX = p.control_x ?? 0; startCY = p.control_y ?? 0;
+    selectedId = ann.id;
+    e.preventDefault();
+    e.stopPropagation();
+    const mv = (e2: MouseEvent) => {
+      if (!dragging) return;
+      const dx = e2.clientX - startMouseX;
+      const dy = e2.clientY - startMouseY;
+      const newPayload: any = {
+        ...ann.payload,
+        start_x: startSX + dx, start_y: startSY + dy,
+        end_x: startEX + dx, end_y: startEY + dy,
+      };
+      if ('control_x' in (ann.payload as any)) {
+        newPayload.control_x = startCX + dx;
+        newPayload.control_y = startCY + dy;
+      }
+      updateAnnotation(ann.id, { payload: newPayload });
+    };
+    const up = () => { dragging = false; window.removeEventListener('mousemove', mv, true); window.removeEventListener('mouseup', up, true); };
+    window.addEventListener('mousemove', mv, true);
+    window.addEventListener('mouseup', up, true);
+  });
+}
+
+// Make path/freehand draggable — shifts all points by delta
+function makePathDraggable(el: HTMLElement, ann: Annotation): void {
+  let dragging = false, startMouseX = 0, startMouseY = 0;
+  let startPoints: [number, number][] = [];
+  el.addEventListener('mousedown', (e: MouseEvent) => {
+    if ((e.target as HTMLElement).closest('.pr-ann-delete')) return;
+    dragging = true;
+    startMouseX = e.clientX;
+    startMouseY = e.clientY;
+    const p = ann.payload as any;
+    startPoints = (p.points as [number, number][]).map(([x, y]) => [x, y] as [number, number]);
+    selectedId = ann.id;
+    e.preventDefault();
+    e.stopPropagation();
+    const mv = (e2: MouseEvent) => {
+      if (!dragging) return;
+      const dx = e2.clientX - startMouseX;
+      const dy = e2.clientY - startMouseY;
+      const newPoints = startPoints.map(([x, y]) => [x + dx, y + dy] as [number, number]);
+      updateAnnotation(ann.id, { payload: { ...(ann.payload as any), points: newPoints } });
+    };
+    const up = () => { dragging = false; window.removeEventListener('mousemove', mv, true); window.removeEventListener('mouseup', up, true); };
+    window.addEventListener('mousemove', mv, true);
+    window.addEventListener('mouseup', up, true);
+  });
+}
+
 function renderAnnotation(ann: Annotation): HTMLElement {
   const el = document.createElement('div');
   el.className = `pr-annotation pr-ann-${ann.type}`;
@@ -852,6 +953,7 @@ function renderAnnotation(ann: Annotation): HTMLElement {
         `;
         el.appendChild(labelEl);
       }
+      makeDraggable(el, ann);
       break;
 
     case 'circle': {
@@ -860,6 +962,7 @@ function renderAnnotation(ann: Annotation): HTMLElement {
       const cx = ann.width / 2, cy = ann.height / 2;
       el.style.cssText = `position:fixed;left:${viewX}px;top:${viewY}px;width:${ann.width}px;height:${ann.height}px;pointer-events:auto;cursor:move;z-index:${ann.z_index};${isSelected ? 'filter:drop-shadow(0 0 2px #fff);' : ''}`;
       el.innerHTML = `<svg width="${ann.width}" height="${ann.height}"><circle cx="${cx}" cy="${cy}" r="${r - p.border_width / 2}" stroke="${p.color}" stroke-width="${p.border_width}" fill="${p.color}" fill-opacity="${p.fill_opacity}"/></svg>`;
+      makeDraggable(el, ann);
       break;
     }
 
@@ -868,6 +971,7 @@ function renderAnnotation(ann: Annotation): HTMLElement {
       const rx = ann.width / 2, ry = ann.height / 2;
       el.style.cssText = `position:fixed;left:${viewX}px;top:${viewY}px;width:${ann.width}px;height:${ann.height}px;pointer-events:auto;cursor:move;z-index:${ann.z_index};${isSelected ? 'filter:drop-shadow(0 0 2px #fff);' : ''}`;
       el.innerHTML = `<svg width="${ann.width}" height="${ann.height}"><ellipse cx="${rx}" cy="${ry}" rx="${rx - p.border_width / 2}" ry="${ry - p.border_width / 2}" stroke="${p.color}" stroke-width="${p.border_width}" fill="${p.color}" fill-opacity="${p.fill_opacity}"/></svg>`;
+      makeDraggable(el, ann);
       break;
     }
 
@@ -885,6 +989,7 @@ function renderAnnotation(ann: Annotation): HTMLElement {
       }
       el.style.cssText = `position:fixed;left:${viewX}px;top:${viewY}px;width:${ann.width}px;height:${ann.height}px;pointer-events:auto;cursor:move;z-index:${ann.z_index};${isSelected ? 'filter:drop-shadow(0 0 2px #fff);' : ''}`;
       el.innerHTML = `<svg width="${ann.width}" height="${ann.height}"><polygon points="${pts}" stroke="${p.color}" stroke-width="${p.border_width}" fill="${p.color}" fill-opacity="${p.fill_opacity}" stroke-linejoin="round"/></svg>`;
+      makeDraggable(el, ann);
       break;
     }
 
@@ -907,7 +1012,7 @@ function renderAnnotation(ann: Annotation): HTMLElement {
         width: ${svgW}px;
         height: ${svgH}px;
         pointer-events: auto;
-        cursor: pointer;
+        cursor: move;
         z-index: ${ann.z_index};
       `;
 
@@ -928,6 +1033,7 @@ function renderAnnotation(ann: Annotation): HTMLElement {
             marker-end="url(#arrowhead-${ann.id})"/>
         </svg>
       `;
+      makeLineDraggable(el, ann);
       break;
     }
 
@@ -937,8 +1043,9 @@ function renderAnnotation(ann: Annotation): HTMLElement {
       const ex = p.end_x - window.scrollX, ey = p.end_y - window.scrollY;
       const minX = Math.min(sx, ex) - 10, minY = Math.min(sy, ey) - 10;
       const svgW = Math.abs(ex - sx) + 20, svgH = Math.abs(ey - sy) + 20;
-      el.style.cssText = `position:fixed;left:${minX}px;top:${minY}px;width:${svgW}px;height:${svgH}px;pointer-events:auto;cursor:pointer;z-index:${ann.z_index};`;
+      el.style.cssText = `position:fixed;left:${minX}px;top:${minY}px;width:${svgW}px;height:${svgH}px;pointer-events:auto;cursor:move;z-index:${ann.z_index};`;
       el.innerHTML = `<svg width="${svgW}" height="${svgH}" style="overflow:visible"><line x1="${sx - minX}" y1="${sy - minY}" x2="${ex - minX}" y2="${ey - minY}" stroke="${p.color}" stroke-width="${p.width}" stroke-linecap="round"/></svg>`;
+      makeLineDraggable(el, ann);
       break;
     }
 
@@ -950,8 +1057,9 @@ function renderAnnotation(ann: Annotation): HTMLElement {
       const minX = Math.min(sx, ex, cx) - 10, minY = Math.min(sy, ey, cy) - 10;
       const maxX = Math.max(sx, ex, cx) + 10, maxY = Math.max(sy, ey, cy) + 10;
       const svgW = maxX - minX, svgH = maxY - minY;
-      el.style.cssText = `position:fixed;left:${minX}px;top:${minY}px;width:${svgW}px;height:${svgH}px;pointer-events:auto;cursor:pointer;z-index:${ann.z_index};`;
+      el.style.cssText = `position:fixed;left:${minX}px;top:${minY}px;width:${svgW}px;height:${svgH}px;pointer-events:auto;cursor:move;z-index:${ann.z_index};`;
       el.innerHTML = `<svg width="${svgW}" height="${svgH}" style="overflow:visible"><path d="M${sx - minX},${sy - minY} Q${cx - minX},${cy - minY} ${ex - minX},${ey - minY}" stroke="${p.color}" stroke-width="${p.width}" fill="none" stroke-linecap="round"/></svg>`;
+      makeLineDraggable(el, ann);
       break;
     }
 
@@ -975,8 +1083,9 @@ function renderAnnotation(ann: Annotation): HTMLElement {
       for (let i = 0; i < p.points.length; i++) {
         lines += `<circle cx="${xs[i] - minX}" cy="${ys[i] - minY}" r="3" fill="${p.color}" stroke="#fff" stroke-width="1"/>`;
       }
-      el.style.cssText = `position:fixed;left:${minX}px;top:${minY}px;width:${svgW}px;height:${svgH}px;pointer-events:auto;cursor:pointer;z-index:${ann.z_index};`;
+      el.style.cssText = `position:fixed;left:${minX}px;top:${minY}px;width:${svgW}px;height:${svgH}px;pointer-events:auto;cursor:move;z-index:${ann.z_index};`;
       el.innerHTML = `<svg width="${svgW}" height="${svgH}" style="overflow:visible">${lines}</svg>`;
+      makePathDraggable(el, ann);
       break;
     }
 
@@ -989,8 +1098,9 @@ function renderAnnotation(ann: Annotation): HTMLElement {
       const maxX = Math.max(...xs) + 10, maxY = Math.max(...ys) + 10;
       const svgW = maxX - minX, svgH = maxY - minY;
       const pts = p.points.map(pt => `${pt[0] - window.scrollX - minX},${pt[1] - window.scrollY - minY}`).join(' ');
-      el.style.cssText = `position:fixed;left:${minX}px;top:${minY}px;width:${svgW}px;height:${svgH}px;pointer-events:auto;cursor:pointer;z-index:${ann.z_index};`;
+      el.style.cssText = `position:fixed;left:${minX}px;top:${minY}px;width:${svgW}px;height:${svgH}px;pointer-events:auto;cursor:move;z-index:${ann.z_index};`;
       el.innerHTML = `<svg width="${svgW}" height="${svgH}" style="overflow:visible"><polyline points="${pts}" stroke="${p.color}" stroke-width="${p.width}" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+      makePathDraggable(el, ann);
       break;
     }
   }

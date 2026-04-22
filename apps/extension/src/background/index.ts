@@ -86,13 +86,12 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   tabModes.delete(tabId);
 });
 
-// --- Extension Icon Click (toggle mode) ---
+// --- Extension Icon Click — toggle widget visibility ---
 chrome.action.onClicked.addListener(async (tab) => {
   if (!tab.id) return;
-  const current = tabModes.get(tab.id) ?? 'browse';
-  const next: RuntimeMode = current === 'browse' ? 'inspect' : 'browse';
-  tabModes.set(tab.id, next);
-  chrome.tabs.sendMessage(tab.id, { type: 'MODE_CHANGED', mode: next });
+  chrome.tabs.sendMessage(tab.id, { type: 'TOGGLE_WIDGET' }).catch(() => {
+    // Content script not loaded (e.g. chrome:// pages) — ignore
+  });
 });
 
 console.log('[Photoresist] Background service worker loaded');

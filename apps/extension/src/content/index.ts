@@ -11,7 +11,7 @@ import {
   initAnnotations, cleanupAnnotations, setTool, getCurrentTool,
   getAnnotations, handleScroll, getAnnotationStyles,
   onAnnotationsChange, setDrawColor, setDrawWidth, undo, redo,
-  getPinThemes, setPinTheme, setNoteTheme,
+  getPinThemes, setPinTheme, setNoteTheme, clearAnnotations,
   type AnnotationTool,
 } from './annotations';
 import { startScreenshotSelection, onScreenshotCaptured, getScreenshotStyles } from './screenshot';
@@ -320,6 +320,7 @@ function createWidget(): HTMLElement {
       <div class="w-footer">
         <button class="w-btn w-undo" data-label="Undo">${I.undo}</button>
         <button class="w-btn w-redo" data-label="Redo">${I.redo}</button>
+        <button class="w-btn w-clear" data-label="Clear All">🧹</button>
         <div class="w-dd">
           <button class="w-btn w-export-trigger" data-label="Export">💾</button>
           <div class="w-dd-menu w-export-menu">
@@ -467,7 +468,13 @@ function setupWidgetEvents(w: HTMLElement): void {
     const toolBtn = el.closest('[data-tool]') as HTMLElement | null;
     if (toolBtn && !toolBtn.classList.contains('w-dd-trigger')) {
       const t = toolBtn.dataset.tool!;
+      // Exit any active mode before switching
+      if (isInspectActive && t !== 'inspect') { stopInspect(); isInspectActive = false; }
+      if (getCurrentTool() !== 'select' && getCurrentTool() !== t) { setTool('select'); updateToolHighlight(''); }
+
       if (t === 'screenshot') {
+        // Deactivate drawing tool when entering screenshot mode
+        setTool('select'); updateToolHighlight('');
         const layer = shadowRoot?.querySelector('#pr-ann-layer') as HTMLElement;
         if (layer) startScreenshotSelection(layer);
       } else if (t === 'inspect') {
@@ -475,6 +482,7 @@ function setupWidgetEvents(w: HTMLElement): void {
           stopInspect(); isInspectActive = false;
           updateToolHighlight('');
         } else {
+          setTool('select'); // exit drawing tool
           startInspect(); isInspectActive = true;
           updateToolHighlight('inspect');
         }
@@ -539,6 +547,12 @@ function setupWidgetEvents(w: HTMLElement): void {
 
     if (el.closest('.w-undo')) { undo(); updateAll(); return; }
     if (el.closest('.w-redo')) { redo(); updateAll(); return; }
+    if (el.closest('.w-clear')) {
+      if (confirm('Clear all annotations? This cannot be undone.')) {
+        clearAnnotations(); updateAll();
+      }
+      return;
+    }
     if (el.closest('.w-send')) { handleSend(); return; }
 
     // Swatch
@@ -1311,6 +1325,10 @@ function updateKeepAlive(): void {
 function listenForMessages(): void {
   chrome.runtime.onMessage.addListener((msg) => {
     if (msg.type === 'MODE_CHANGED') { if (msg.mode === 'browse') collapse(); else expand(); }
+    if (msg.type === 'TOGGLE_WIDGET') {
+      if (isOpen) collapse();
+      else expand();
+    }
   });
 }
 
@@ -1335,14 +1353,7 @@ function getCSS(): string {
 
 /* --- Collapsed = Logo --- */
 .widget.collapsed {
-  width: 44px;
-  height: 44px;
-  border-radius: 22px;
-  background: transparent;
-  border: none;
-  box-shadow: none;
-  cursor: grab;
-  overflow: visible;
+  display: none;
 }
 .widget.collapsed:active { cursor: grabbing; }
 .widget.collapsed .w-panel { display: none; }
